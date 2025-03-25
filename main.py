@@ -63,10 +63,21 @@ if selected == "🏠 Main":
             try:
                 # Load and store data in session state
                 if uploaded_file.name.endswith(".csv"):
-                    st.session_state.data = pd.read_csv(uploaded_file)
+                    try:
+                        st.session_state.data = pd.read_csv(uploaded_file, encoding="utf-8")
+                    except UnicodeDecodeError:
+                        try:
+                            st.session_state.data = pd.read_csv(uploaded_file, encoding="latin1")
+                        except Exception as e:
+                            st.error(f"Error loading file: {str(e)}")
+                            st.stop()
                 else:
-                    st.session_state.data = pd.read_excel(uploaded_file)
-                
+                    try:
+                        st.session_state.data = pd.read_excel(uploaded_file)
+                    except Exception as e:
+                        st.error(f"Error loading Excel file: {str(e)}")
+                        st.stop()
+
                 df = st.session_state.data
                 
                 # Data Overview Section
@@ -94,9 +105,13 @@ if selected == "🏠 Main":
 
                 # Store numeric data and scaled features
                 numeric_cols = df.select_dtypes(include=["float64", "int64"]).columns
-                st.session_state.numeric_data = df[numeric_cols].copy()
-                scaler = StandardScaler()
-                st.session_state.scaled_features = scaler.fit_transform(st.session_state.numeric_data)
+                if len(numeric_cols) > 0:
+                    st.session_state.numeric_data = df[numeric_cols].copy()
+                    scaler = StandardScaler()
+                    st.session_state.scaled_features = scaler.fit_transform(st.session_state.numeric_data)
+                else:
+                    st.error("No numeric columns found in the dataset. Please upload a dataset with numeric columns for clustering analysis.")
+                    st.stop()
 
             except Exception as e:
                 st.error(f"Error processing data: {str(e)}")
